@@ -4,7 +4,10 @@ class DropBoxController {
 
         this.btnSendFile = document.querySelector("#btn-send-file");
         this.inputFiles = document.querySelector('#files');
-        this.snackModal = document.querySelector('#react-snackbar-root')
+        this.snackModal = document.querySelector('#react-snackbar-root');
+        this.progressBar = document.querySelector('.mc-progress-bar-fg');
+        this.nameFile = document.querySelector('.filename');
+        this.timeLeftEl = document.querySelector('.timeleft')
 
         this.initEvents();
 
@@ -23,9 +26,17 @@ class DropBoxController {
             this.uploadTask(e.target.files);
 
             // Mostrar carregamento das imgs
-            this.snackModal.style.display = "block";
+            this.modalShow();
+
+            this.inputFiles.value = '';
 
         })
+    }
+
+    modalShow(show = true){
+
+        this.snackModal.style.display = (show) ? 'block' : 'none'
+
     }
 
     uploadTask(files){
@@ -46,6 +57,8 @@ class DropBoxController {
 
                 ajax.onload = event =>{
 
+                    this.modalShow(false)
+
                     try{
 
                         resolve(JSON.parse(ajax.responseText));
@@ -60,13 +73,23 @@ class DropBoxController {
 
                 ajax.onerror = e =>{
 
+                    this.modalShow(false)
+
                     reject(e);
 
                 };
 
+                ajax.upload.onprogress = e =>{
+
+                    this.uploadProgress(e, file)
+
+                }
+
                 let formData = new FormData();
 
                 formData.append('input-file', file);
+
+                this.startUploadTime = Date.now();
 
                 ajax.send(formData)
 
@@ -77,6 +100,45 @@ class DropBoxController {
         // Retonar um array de promessas
         return Promise.all(promises)
 
+    }
+
+    uploadProgress(event, file){
+
+        // Dados ja carregados
+
+        let timeSpent = Date.now() - this.startUploadTime;
+
+        let loaded = event.loaded;
+        let total = event.total;
+        let porcent = parseInt((loaded / total) * 100);
+
+        let timeLeft = ((100 - porcent) * timeSpent) / porcent
+
+        this.progressBar.style.width = `${porcent}%`;
+
+        this.nameFile.innerHTML = file.name;
+        this.timeLeftEl.innerHTML = this.formatTime(timeLeft);
+
+    }
+
+    formatTime(duration){
+
+        let ss = parseInt((duration / 1000) % 60);
+        let mm = parseInt((duration / (1000 * 60)) % 60);
+        let hh = parseInt((duration / (1000 * 60 * 60)) % 24);
+
+        if(hh > 0) {
+            return `${hh} horas, ${mm} minutos e ${ss} segundos`;
+        }
+        if(mm > 0) {
+            return `${mm} minutos e ${ss} segundos`;
+        }
+        if(ss > 0) {
+            return `${ss} segundos`;
+        }
+
+        return '';
+        
     }
 
 }
