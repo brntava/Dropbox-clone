@@ -20,10 +20,62 @@ class DropBoxController {
 
         this.inputFiles.addEventListener('change', e =>{
 
-            console.log(e.target.files);
+            this.uploadTask(e.target.files);
+
+            // Mostrar carregamento das imgs
             this.snackModal.style.display = "block";
 
         })
+    }
+
+    uploadTask(files){
+
+        let promises = [];
+
+        // Transforma em array
+
+        [...files].forEach(file => {
+
+            // Retorna uma promessa para cada file
+
+            promises.push(new Promise ((resolve, reject) => {
+
+                let ajax = new XMLHttpRequest;
+
+                ajax.open('POST', '/upload')
+
+                ajax.onload = event =>{
+
+                    try{
+
+                        resolve(JSON.parse(ajax.responseText));
+
+                    } catch(e){
+
+                        reject(e);
+
+                    }
+
+                };
+
+                ajax.onerror = e =>{
+
+                    reject(e);
+
+                };
+
+                let formData = new FormData();
+
+                formData.append('input-file', file);
+
+                ajax.send(formData)
+
+            }))
+
+        })
+
+        // Retonar um array de promessas
+        return Promise.all(promises)
 
     }
 
