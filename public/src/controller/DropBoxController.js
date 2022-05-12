@@ -8,9 +8,11 @@ class DropBoxController {
         this.progressBar = document.querySelector('.mc-progress-bar-fg');
         this.nameFile = document.querySelector('.filename');
         this.timeLeftEl = document.querySelector('.timeleft');
+        this.listFiles = document.querySelector('#list-of-files-and-directories');
 
         this.initEvents();
         this.connectFireBase();
+        this.readFiles();
 
     }
 
@@ -215,7 +217,7 @@ class DropBoxController {
 
     getFileIconView(file){
 
-        switch(file.type){
+        switch(file.mimetype){
 
             case 'folder':
                 return `
@@ -400,15 +402,49 @@ class DropBoxController {
 
     }
 
-    getFileView(file){
+    getFileView(file, key){
 
-        return `
-        <li>
+        let li = document.createElement('li');
+
+        li.dataset.key = key;
+
+        li.innerHTML = `
             ${this.getFileIconView(file)}
-            <div class="name text-center">${file.name}</div>
-        </li>
+            <div class="name text-center">${file.originalFilename}</div>
+        ` ;
 
-        `;
+        this.selectedLi(li);
+
+        return li;
+    }
+
+    readFiles(){
+
+        this.getFirebaseRef().on('value', snapshot => {
+
+            this.listFiles.innerHTML = '';
+
+            snapshot.forEach(snapshotItem =>{
+
+                let key = snapshotItem.key;
+                let data = snapshotItem.val();
+
+                console.log(data, key)
+
+                this.listFiles.appendChild(this.getFileView(data, key))
+
+            })
+
+        })
+    }
+
+    selectedLi(li){
+
+        li.addEventListener('click', () => {
+
+            li.classList.toggle('selected')
+
+        })
 
     }
 
