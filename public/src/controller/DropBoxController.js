@@ -14,50 +14,43 @@ class DropBoxController {
 
     }
 
+
     connectFireBase(){
-
-        // Import the functions you need from the SDKs you need
-
-        import { initializeApp } from "firebase/app";
-
-        import { getAnalytics } from "firebase/analytics";
-
+      
         // TODO: Add SDKs for Firebase products that you want to use
-
+      
         // https://firebase.google.com/docs/web/setup#available-libraries
-
-
+      
+      
         // Your web app's Firebase configuration
-
+      
         // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-
+      
         const firebaseConfig = {
-
-        apiKey: "AIzaSyAXoz_3xgAkoak-FHbNdsY_CXn2LvpSh0s",
-
-        authDomain: "clone-dropbox-5b2b7.firebaseapp.com",
-
-        databaseURL: "https://clone-dropbox-5b2b7-default-rtdb.firebaseio.com",
-
-        projectId: "clone-dropbox-5b2b7",
-
-        storageBucket: "clone-dropbox-5b2b7.appspot.com",
-
-        messagingSenderId: "1081024087341",
-
-        appId: "1:1081024087341:web:74829d1e4ed9569b37bfa4",
-
-        measurementId: "G-Y0FCR5H1JF"
-
+      
+          apiKey: "AIzaSyAXoz_3xgAkoak-FHbNdsY_CXn2LvpSh0s",
+      
+          authDomain: "clone-dropbox-5b2b7.firebaseapp.com",
+      
+          databaseURL: "https://clone-dropbox-5b2b7-default-rtdb.firebaseio.com",
+      
+          projectId: "clone-dropbox-5b2b7",
+      
+          storageBucket: "clone-dropbox-5b2b7.appspot.com",
+      
+          messagingSenderId: "1081024087341",
+      
+          appId: "1:1081024087341:web:2eed6ab8bef6678e37bfa4",
+      
+          measurementId: "G-C3JCE6CT74"
+      
         };
-
-
+      
+      
         // Initialize Firebase
-
-        const app = initializeApp(firebaseConfig);
-
-        const analytics = getAnalytics(app);
-
+      
+        firebase.initializeApp(firebaseConfig);
+      
 
     }
 
@@ -71,7 +64,26 @@ class DropBoxController {
 
         this.inputFiles.addEventListener('change', e =>{
 
-            this.uploadTask(e.target.files);
+            this.btnSendFile.disabled = true;
+
+            this.uploadTask(e.target.files).then(responses => {
+
+                responses.forEach(resp => {
+
+                    // Botar os itens dentro do firebase
+
+                    this.getFirebaseRef().push().set(resp.files['input-file'])
+
+                });
+
+                this.uploadComplete();
+
+            }).catch(err => {
+
+                this.uploadComplete();
+                console.error(err);
+
+            })
 
             // Mostrar carregamento das imgs
             this.modalShow();
@@ -79,6 +91,22 @@ class DropBoxController {
             this.inputFiles.value = '';
 
         })
+    }
+
+    uploadComplete(){
+
+        this.modalShow(false);
+        this.inputFiles.value = '';
+        this.btnSendFile.disabled = false;
+
+    }
+
+    getFirebaseRef(){
+
+        // Pegar arquivos do banco de dados
+
+        return firebase.database().ref('files')
+
     }
 
     modalShow(show = true){
@@ -105,8 +133,6 @@ class DropBoxController {
 
                 ajax.onload = event =>{
 
-                    this.modalShow(false)
-
                     try{
 
                         resolve(JSON.parse(ajax.responseText));
@@ -120,8 +146,6 @@ class DropBoxController {
                 };
 
                 ajax.onerror = e =>{
-
-                    this.modalShow(false)
 
                     reject(e);
 
