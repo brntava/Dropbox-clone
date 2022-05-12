@@ -2,6 +2,8 @@ class DropBoxController {
 
     constructor(){
 
+        this.onSelectionChange = new Event('selectionchange')
+
         this.btnSendFile = document.querySelector("#btn-send-file");
         this.inputFiles = document.querySelector('#files');
         this.snackModal = document.querySelector('#react-snackbar-root');
@@ -9,6 +11,10 @@ class DropBoxController {
         this.nameFile = document.querySelector('.filename');
         this.timeLeftEl = document.querySelector('.timeleft');
         this.listFiles = document.querySelector('#list-of-files-and-directories');
+
+        this.btnNewFolder = document.querySelector('#btn-new-folder');
+        this.btnRename = document.querySelector('#btn-rename');
+        this.btnDelete = document.querySelector('#btn-delete');
 
         this.initEvents();
         this.connectFireBase();
@@ -56,7 +62,35 @@ class DropBoxController {
 
     }
 
+    getSelection(){
+
+        return this.listFiles.querySelectorAll('.selected')
+
+    }
+
     initEvents(){
+
+        this.listFiles.addEventListener('selectionchange', e =>{
+
+            switch(this.getSelection().length){
+
+                case 0:
+                    this.btnDelete.style.display = 'none';
+                    this.btnRename.style.display = 'none';
+                break
+
+                case 1:
+                    this.btnDelete.style.display = 'block';
+                    this.btnRename.style.display = 'block';
+                break
+
+                default:
+                    this.btnDelete.style.display = 'block';
+                    this.btnRename.style.display = 'none';
+
+            }
+
+        })
 
         this.btnSendFile.addEventListener('click', e => {
 
@@ -429,8 +463,6 @@ class DropBoxController {
                 let key = snapshotItem.key;
                 let data = snapshotItem.val();
 
-                console.log(data, key)
-
                 this.listFiles.appendChild(this.getFileView(data, key))
 
             })
@@ -440,9 +472,61 @@ class DropBoxController {
 
     selectedLi(li){
 
-        li.addEventListener('click', () => {
+        li.addEventListener('click', e => {
 
-            li.classList.toggle('selected')
+            if(e.shiftKey){
+
+                let firstLi = this.listFiles.querySelector('.selected');
+
+                if(firstLi){
+
+                    let indexStart;
+                    let indexEnd;
+                    let lis = li.parentElement.childNodes;
+
+                    // Pegar o ul
+                    lis.forEach((el, index) => {
+
+                        // Saber onde começa e onde termina
+                        if(firstLi === el) indexStart = index;
+                        if(li === el) indexEnd = index;
+
+                    })
+
+                    let index = [indexStart, indexEnd].sort();
+
+                    lis.forEach((el, i) => {
+
+                        if(i >= index[0] && i <= index[1]){
+
+                            el.classList.add('selected')
+                            
+                        }
+
+                    });
+
+                    // Executa o evento criado la em cima
+                    this.listFiles.dispatchEvent(this.onSelectionChange);
+
+                    return true;
+
+                }
+
+            }
+
+            if(!e.ctrlKey){
+
+                this.listFiles.querySelectorAll('li.selected').forEach(el =>{
+
+                    el.classList.remove('selected');
+
+                })
+
+            }
+
+            li.classList.toggle('selected');
+            
+            this.listFiles.dispatchEvent(this.onSelectionChange);
 
         })
 
