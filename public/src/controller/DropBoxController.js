@@ -190,11 +190,17 @@ class DropBoxController {
 
             this.uploadTask(e.target.files).then(responses => {
 
+                console.log('resposta', responses)
+
                 responses.forEach(resp => {
 
                     // Botar os itens dentro do firebase
 
-                    this.getFirebaseRef().push().set(resp.files['input-file'])
+                    this.getFirebaseRef().push().set({
+                        name: resp.name,
+                        type: resp.contentType,
+                        size: resp.size
+                    })
 
                 });
 
@@ -284,17 +290,41 @@ class DropBoxController {
 
         [...files].forEach(file => {
 
-            let formData = new FormData();
+            // Firebase storage
 
-            formData.append('input-file', file);
+            promises.push(new Promise((resolve, reject) =>{
 
-            promises.push(this.ajax('/upload', 'POST', formData, () => {
+                let fileRef = firebase.storage().ref(this.currentFolder.join('/')).child(file.name);
 
-                this.uploadProgress(event, file)
+                let task = fileRef.put(file);
+    
+                task.on('state_changed', snapshot => {
+    
+                    this.uploadProgress({
+                        
+                      loaded: snapshot.bytesTransferred,
+                      total: snapshot.totalBytes
 
-            }, () =>{
+                    },file);
+    
+                }, err =>{
+    
+                    console.error(err);
+                    reject(err);
+                    
+                }, () =>{
 
-                this.startUploadTime = Date.now();
+                    fileRef.getMetadata().then(metadata =>{
+
+                        resolve(metadata);
+
+                    }).catch(err =>{
+
+                        reject(err);
+
+                    });
+                    
+                });
 
             }));
 
