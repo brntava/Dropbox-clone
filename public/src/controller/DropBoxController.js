@@ -72,6 +72,66 @@ class DropBoxController {
 
     }
 
+    removeFolderTask(ref, name){
+
+        return new Promise((resolve, reject) =>{
+
+            let folderRef = this.getFirebaseRef(ref + '/' + name);
+
+            folderRef.on('value', snapshot =>{
+
+                folderRef.off('value');
+                
+                snapshot.forEach(item =>{
+                    
+
+                    let data = item.val();
+                    data.key = item.key;
+
+                    if(data.type === 'folder'){
+
+                        this.removeFolderTask(ref + '/' + name, data.name).then(() => {
+
+                            resolve({
+                                fields: {
+                                    key: data.key
+                                }
+                            });
+
+                        }).catch(err =>{
+
+                            reject(err)
+
+                        })
+
+                    } else if(data.type){
+
+                        this.removeFile(ref + '/' + name, data.name).then(() => {
+
+                            resolve({
+                                fields: {
+                                    key: data.key
+                                }
+                            });
+
+                        }).catch(err =>{
+
+                            reject(err)
+
+                        });
+
+                    }
+
+                });
+
+                folderRef.remove();
+
+            });
+
+        })
+
+    }
+
     removeTask(){
 
         let promises = [];
@@ -81,19 +141,48 @@ class DropBoxController {
             let file = JSON.parse(li.dataset.file);
             let key = li.dataset.key;
 
-            let formData = new FormData();
+            promises.push(new Promise((resolve, reject) =>{
 
-            formData.append('path', file.filepath);
-            formData.append('key', key);
+                if(file.type === 'folder'){
 
-            promises.push(this.ajax('/file', 'DELETE', formData));
+                    this.removeFolderTask(this.currentFolder.join('/'), file.name).then(() =>{
+
+                        resolve({
+                            fields: {
+                                key
+                            }
+                        });
+    
+                    });
+
+                } else if(file.type){
+
+                    this.removeFile(this.currentFolder.join('/'), file.name).then(() =>{
+
+                        resolve({
+                            fields: {
+                                key
+                            }
+                        });
+    
+                    });
+
+                }
+
+            }));
 
 
         });
 
-        return Promise.all(promises);
+        return Promise.all(promises);    
+    }
 
-        
+    removeFile(ref,name){
+
+        let fileRef = firebase.storage().ref(ref).child(name);
+
+        return fileRef.delete();
+
     }
 
     initEvents(){
@@ -105,8 +194,8 @@ class DropBoxController {
             if(name){
 
                 this.getFirebaseRef().push().set({
-                    originalFilename: name,
-                    mimetype: 'folder',
+                    name,
+                    type: 'folder',
                     filepath: this.currentFolder.join('/')
 
                 })
@@ -143,12 +232,12 @@ class DropBoxController {
 
             let file = JSON.parse(li.dataset.file);
 
-            let name = prompt('Renomear arquivo: ', file.originalFilename)
+            let name = prompt('Renomear arquivo: ', file.name)
 
             // Alterar no Database
             if(name){
 
-                file.originalFilename = name;
+                file.name = name;
 
                 this.getFirebaseRef().child(li.dataset.key).set(file)
 
@@ -189,8 +278,6 @@ class DropBoxController {
             this.btnSendFile.disabled = true;
 
             this.uploadTask(e.target.files).then(responses => {
-
-                console.log('resposta', responses)
 
                 responses.forEach(resp => {
 
@@ -376,7 +463,7 @@ class DropBoxController {
 
     getFileIconView(file){
 
-        switch(file.mimetype){
+        switch(file.type){
 
             case 'folder':
                 return `
@@ -388,7 +475,7 @@ class DropBoxController {
                         <path d="M77.955 52h50.04A3.002 3.002 0 0 1 131 55.007v58.988a4.008 4.008 0 0 1-4.003 4.005H39.003A4.002 4.002 0 0 1 35 113.995V44.99c0-2.206 1.79-3.99 3.997-3.99h26.002c1.666 0 3.667 1.166 4.49 2.605l3.341 5.848s1.281 2.544 5.12 2.544l.005.003z"
                         fill="#92CEFF"></path>
                     </g>
-                </svg>`
+                </svg>`;
             break
 
             case 'image/png':
@@ -554,7 +641,7 @@ class DropBoxController {
                         </g>
                     </g>
                 </svg>
-                `
+                `;
 
 
         }
@@ -568,10 +655,14 @@ class DropBoxController {
         li.dataset.key = key;
         li.dataset.file = JSON.stringify(file);
 
+        if(file.type){
+
         li.innerHTML = `
             ${this.getFileIconView(file)}
-            <div class="name text-center">${file.originalFilename}</div>
+            <div class="name text-center">${file.name}</div>
         ` ;
+
+        }
 
         this.selectedLi(li);
 
@@ -591,7 +682,7 @@ class DropBoxController {
                 let key = snapshotItem.key;
                 let data = snapshotItem.val();
 
-                if(data.mimetype){
+                if(data.type){
 
                     this.listFiles.appendChild(this.getFileView(data, key))
 
@@ -676,19 +767,18 @@ class DropBoxController {
 
             let file = JSON.parse(li.dataset.file);
 
-            switch(file.mimetype){
+            switch(file.type){
 
                 case 'folder':
-                    this.currentFolder.push(file.originalFilename);
+                    this.currentFolder.push(file.name);
                     this.openFolder();
                     break
 
                 default:
-                    window.open('/file?path=' + file.filepath)
+                    window.open(file.path)
                     
 
             }
-
 
         })
 
